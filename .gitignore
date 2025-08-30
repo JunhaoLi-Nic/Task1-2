@@ -1,0 +1,32 @@
+# PHP & Composer
+/vendor/
+composer.lock
+composer.phar
+
+# Node
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Environment & config
+.env
+.env.*
+*.local.php
+
+
+# Logs & cache
+*.log
+cache/
+
+# Misc
+*.bak
+*.tmp
+
