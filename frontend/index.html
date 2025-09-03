@@ -3,17 +3,42 @@
 <head>
     <title>Enrolment Report</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .autocomplete-suggestions {
+            border: 1px solid #ccc;
+            background: #fff;
+            position: absolute;
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            width: 100%;
+        }
+        .autocomplete-suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .autocomplete-suggestion:hover {
+            background: #f0f0f0;
+        }
+    </style>
 </head>
 <body class="p-4">
     <h2>Enrolment Report</h2>
+    <div class="mb-3 position-relative" style="max-width: 500px;">
+        <input id="searchBar" class="form-control" placeholder="Search user or course..." autocomplete="off" oninput="onSearchInput()" />
+        <div id="autocomplete" class="autocomplete-suggestions d-none"></div>
+    </div>
     <div class="mb-3">
-        <select id="userFilter" class="form-select w-auto d-inline" onchange="loadData()">
-            <option value="">All Users</option>
-        </select>
         <select id="courseFilter" class="form-select w-auto d-inline" onchange="loadData()">
             <option value="">All Courses</option>
         </select>
-        <button onclick="loadData()" class="btn btn-primary">Search</button>
+        <select id="statusFilter" class="form-select w-auto d-inline" onchange="loadData()">
+            <option value="">All Statuses</option>
+            <option value="not started">Not Started</option>
+            <option value="in progress">In Progress</option>
+            <option value="completed">Completed</option>
+        </select>
+        <button onclick="clearSearch()" class="btn btn-secondary">Clear Search</button>
     </div>
     <table class="table table-bordered" id="results">
         <thead>
@@ -24,27 +49,39 @@
         <tbody></tbody>
     </table>
 <script>
+let users = [];
+let courses = [];
+let searchType = null; // 'user' or 'course'
+let searchId = null;   // id of selected user or course
+
 function loadUsers() {
-    fetch('/api/get_users.php').then(r=>r.json()).then(users=>{
-        let sel = document.getElementById('userFilter');
-        sel.innerHTML = '<option value="">All Users</option>';
-        users.forEach(u=>sel.innerHTML += `<option value="${u.user_id}">${u.first_name} ${u.surname}</option>`);
+    fetch('/api/get_users.php').then(r=>r.json()).then(data=>{
+        users = data;
     });
 }
 function loadCourses() {
-    fetch('/api/get_courses.php').then(r=>r.json()).then(courses=>{
+    fetch('/api/get_courses.php').then(r=>r.json()).then(data=>{
+        courses = data;
         let sel = document.getElementById('courseFilter');
         sel.innerHTML = '<option value="">All Courses</option>';
-        courses.forEach(c=>sel.innerHTML += `<option value="${c.course_id}">${c.description}</option>`);
+        data.forEach(c=>sel.innerHTML += `<option value="${c.course_id}">${c.description}</option>`);
     });
 }
 function loadData() {
-    let user = document.getElementById('userFilter').value;
-    let course = document.getElementById('courseFilter').value;
     let url = '/api/get_enrolments.php';
     let params = [];
-    if (user) params.push('user_id='+user);
-    if (course) params.push('course_id='+course);
+    // Apply search filter if selected
+    if (searchType === 'user' && searchId) params.push('user_id='+searchId);
+    if (searchType === 'course' && searchId) params.push('course_id='+searchId);
+    // Apply course dropdown filter (overrides search if set)
+    let course = document.getElementById('courseFilter').value;
+    if (course) {
+        params = params.filter(p=>!p.startsWith('course_id='));
+        params.push('course_id='+course);
+    }
+    // Apply status filter
+    let status = document.getElementById('statusFilter').value;
+    if (status) params.push('completion_status='+encodeURIComponent(status));
     if (params.length) url += '?' + params.join('&');
     fetch(url)
         .then(r => {
@@ -52,9 +89,10 @@ function loadData() {
             return r.json();
         })
         .then(data => {
+            let rows = Array.isArray(data) ? data : data.data;
             let tbody = document.querySelector('#results tbody');
             tbody.innerHTML = '';
-            data.forEach(row => {
+            rows.forEach(row => {
                 tbody.innerHTML += `<tr>
                     <td>${row.enrolment_id}</td>
                     <td>${row.first_name} ${row.surname}</td>
@@ -68,6 +106,44 @@ function loadData() {
             tbody.innerHTML = '';
             alert('Failed to load data: ' + err.message);
         });
+}
+function onSearchInput() {
+    let val = document.getElementById('searchBar').value.trim().toLowerCase();
+    let ac = document.getElementById('autocomplete');
+    if (!val) {
+        ac.classList.add('d-none');
+        return;
+    }
+    // Find matching users and courses
+    let userMatches = users.filter(u => (`${u.first_name} ${u.surname}`.toLowerCase().includes(val)));
+    let courseMatches = courses.filter(c => c.description.toLowerCase().includes(val));
+    let html = '';
+    userMatches.forEach(u => {
+        html += `<div class="autocomplete-suggestion" onclick="selectSearch('user', ${u.user_id}, '${u.first_name} ${u.surname}')">User: ${u.first_name} ${u.surname}</div>`;
+    });
+    courseMatches.forEach(c => {
+        html += `<div class="autocomplete-suggestion" onclick="selectSearch('course', ${c.course_id}, '${c.description}')">Course: ${c.description}</div>`;
+    });
+    if (!html) {
+        ac.classList.add('d-none');
+        return;
+    }
+    ac.innerHTML = html;
+    ac.classList.remove('d-none');
+}
+function selectSearch(type, id, label) {
+    searchType = type;
+    searchId = id;
+    document.getElementById('searchBar').value = label;
+    document.getElementById('autocomplete').classList.add('d-none');
+    loadData();
+}
+function clearSearch() {
+    searchType = null;
+    searchId = null;
+    document.getElementById('searchBar').value = '';
+    document.getElementById('autocomplete').classList.add('d-none');
+    loadData();
 }
 window.onload = function() {
     loadUsers();
