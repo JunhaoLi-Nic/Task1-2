@@ -116,6 +116,8 @@ function loadData(page) {
             // Support both array and {data, total} response
             let rows = Array.isArray(data) ? data : data.data;
             totalRows = data.total || rows.length;
+            //Sort by enrolment_id ascending
+            rows = rows.sort((a, b) => Number(a.enrolment_id) - Number(b.enrolment_id));
             let tbody = document.querySelector('#results tbody');
             tbody.innerHTML = '';
             rows.forEach(row => {
