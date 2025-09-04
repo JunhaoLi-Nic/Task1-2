@@ -33,16 +33,33 @@
             flex-direction: row;
             gap: 12px;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .filter-select,
+        .choices__inner {
+            min-width: 210px;
+            max-width: 220px;
+            width: 210px !important;
+            background: #fff !important;
+        }
+        .filter-select,
+        .choices {
+            margin-bottom: 12px !important;
+        }
+        .btn {
+            display: block;
+            margin-bottom: 12px;
         }
         @media (max-width: 767.98px) {
             .filter-controls {
                 flex-direction: column;
                 align-items: stretch;
             }
-            .filter-controls > * {
+            .filter-select,
+            .choices__inner {
                 width: 100% !important;
                 min-width: 0 !important;
+                max-width: 100% !important;
             }
         }
     </style>
@@ -58,23 +75,23 @@
     </div>
     <!-- Dropdown filters for course and status, and clear search button -->
     <div class="filter-controls">
-        <select id="courseFilter" class="form-select w-auto d-inline" onchange="loadData(1)">
+        <select id="courseFilter" class="form-select filter-select" onchange="loadData(1)">
             <option value="">All Courses</option>
         </select>
-        <select id="statusFilter" class="form-select w-auto d-inline" onchange="loadData(1)">
+        <select id="statusFilter" class="form-select filter-select" onchange="loadData(1)">
             <option value="">All Statuses</option>
             <option value="not started">Not Started</option>
             <option value="in progress">In Progress</option>
             <option value="completed">Completed</option>
         </select>
-        <select id="pageSizeSelector" class="form-select w-auto d-inline" onchange="onPageSizeChange()">
+        <select id="pageSizeSelector" class="form-select filter-select" onchange="onPageSizeChange()">
             <option value="10">10</option>
             <option value="20" selected>20</option>
             <option value="50">50</option>
             <option value="100">100</option>
         </select>
     </div>
-    <button onclick="clearSearch()" class="btn btn-secondary">Clear Search</button>
+    <button onclick="clearSearch()" class="btn btn-secondary filter-clear-btn mt-2">Clear Search</button>
     <!-- Pagination controls will be rendered here -->
     <div class="mb-3" id="pagination" style="display: flex; gap: 8px; align-items: center;"></div>
     <!-- Results table -->
