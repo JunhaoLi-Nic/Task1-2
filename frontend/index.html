@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Enrolment Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Bootstrap CSS for responsive styling -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -15,18 +17,22 @@
             overflow-y: auto;
             width: 100%;
         }
+
         .autocomplete-suggestion {
             padding: 8px 12px;
             cursor: pointer;
         }
+
         .autocomplete-suggestion:hover {
             background: #f0f0f0;
         }
+
         /* Ensure Choices.js dropdown does not overflow viewport */
         .choices__list--dropdown {
             max-width: 100vw !important;
             box-sizing: border-box;
         }
+
         /* Responsive filter controls layout */
         .filter-controls {
             display: flex;
@@ -35,6 +41,7 @@
             align-items: center;
             margin-bottom: 0.5rem;
         }
+
         .filter-select,
         .choices__inner {
             min-width: 210px;
@@ -42,19 +49,23 @@
             width: 210px !important;
             background: #fff !important;
         }
+
         .filter-select,
         .choices {
             margin-bottom: 12px !important;
         }
+
         .btn {
             display: block;
             margin-bottom: 12px;
         }
+
         @media (max-width: 767.98px) {
             .filter-controls {
                 flex-direction: column;
                 align-items: stretch;
             }
+
             .filter-select,
             .choices__inner {
                 width: 100% !important;
@@ -66,11 +77,13 @@
     <!-- Choices.js CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 </head>
+
 <body class="p-4">
     <h2>Enrolment Report</h2>
     <!-- Search bar with autocomplete for users/courses -->
     <div class="mb-3 position-relative" style="max-width: 500px;">
-        <input id="searchBar" class="form-control" placeholder="Search user or course..." autocomplete="off" oninput="onSearchInput()" />
+        <input id="searchBar" class="form-control" placeholder="Search user or course..." autocomplete="off"
+            oninput="onSearchInput()" />
         <div id="autocomplete" class="autocomplete-suggestions d-none"></div>
     </div>
     <!-- Dropdown filters for course and status, and clear search button -->
@@ -85,6 +98,7 @@
             <option value="completed">Completed</option>
         </select>
         <select id="pageSizeSelector" class="form-select filter-select" onchange="onPageSizeChange()">
+            <option value="5">5</option>
             <option value="10">10</option>
             <option value="20" selected>20</option>
             <option value="50">50</option>
@@ -92,168 +106,174 @@
         </select>
     </div>
     <button onclick="clearSearch()" class="btn btn-secondary filter-clear-btn mt-2">Clear Search</button>
-    <!-- Pagination controls will be rendered here -->
-    <div class="mb-3" id="pagination" style="display: flex; gap: 8px; align-items: center;"></div>
+
     <!-- Results table -->
     <table class="table table-bordered" id="results">
         <thead>
             <tr>
-                <th>ID</th><th>Name</th><th>Course</th><th>Status</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Course</th>
+                <th>Status</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
-<script>
-// Global state variables
-let users = [];
-let courses = [];
-let searchType = null; // 'user' or 'course'
-let searchId = null;   // id of selected user or course
-let currentPage = 1;
-let pageSize = 20;
-let totalRows = 0;
 
-// Fetch all users for autocomplete
-function loadUsers() {
-    fetch('/api/get_users.php').then(r=>r.json()).then(data=>{
-        users = data;
-    });
-}
-// Fetch all courses for autocomplete and course filter
-function loadCourses() {
-    fetch('/api/get_courses.php').then(r=>r.json()).then(data=>{
-        courses = data;
-        let sel = document.getElementById('courseFilter');
-        sel.innerHTML = '<option value="">All Courses</option>';
-        data.forEach(c=>sel.innerHTML += `<option value="${c.course_id}">${c.description}</option>`);
-        // Initialize Choices.js after options are loaded
-        if (window.courseChoicesInstance) window.courseChoicesInstance.destroy();
-        window.courseChoicesInstance = new Choices('#courseFilter', { shouldSort: false, searchEnabled: false });
-    });
-}
-// Fetch and render enrolment data for the current filters and page
-function loadData(page) {
-    if (page) currentPage = page;
-    let url = '/api/get_enrolments.php';
-    let params = [];
-    // Apply search filter if selected
-    if (searchType === 'user' && searchId) params.push('user_id='+searchId);
-    if (searchType === 'course' && searchId) params.push('course_id='+searchId);
-    // Apply course dropdown filter (overrides search if set)
-    let course = document.getElementById('courseFilter').value;
-    if (course) {
-        params = params.filter(p=>!p.startsWith('course_id='));
-        params.push('course_id='+course);
-    }
-    // Apply status filter
-    let status = document.getElementById('statusFilter').value;
-    if (status) params.push('completion_status='+encodeURIComponent(status));
-    // Pagination
-    params.push('limit='+pageSize);
-    params.push('offset='+(pageSize*(currentPage-1)));
-    if (params.length) url += '?' + params.join('&');
-    fetch(url)
-        .then(r => {
-            if (!r.ok) throw new Error('Network response was not ok');
-            return r.json();
-        })
-        .then(data => {
-            // Support both array and {data, total} response
-            let rows = Array.isArray(data) ? data : data.data;
-            totalRows = data.total || rows.length;
-            //Sort by enrolment_id ascending
-            rows = rows.sort((a, b) => Number(a.enrolment_id) - Number(b.enrolment_id));
-            let tbody = document.querySelector('#results tbody');
-            tbody.innerHTML = '';
-            rows.forEach(row => {
-                tbody.innerHTML += `<tr>
+    <!-- Pagination controls will be rendered here -->
+    <div class="mb-3" id="pagination" style="display: flex; gap: 8px; align-items: center;"></div>
+    <script>
+        // Global state variables
+        let users = [];
+        let courses = [];
+        let searchType = null; // 'user' or 'course'
+        let searchId = null;   // id of selected user or course
+        let currentPage = 1;
+        let pageSize = 20;
+        let totalRows = 0;
+
+        // Fetch all users for autocomplete
+        function loadUsers() {
+            fetch('/api/get_users.php').then(r => r.json()).then(data => {
+                users = data;
+            });
+        }
+        // Fetch all courses for autocomplete and course filter
+        function loadCourses() {
+            fetch('/api/get_courses.php').then(r => r.json()).then(data => {
+                courses = data;
+                let sel = document.getElementById('courseFilter');
+                sel.innerHTML = '<option value="">All Courses</option>';
+                data.forEach(c => sel.innerHTML += `<option value="${c.course_id}">${c.description}</option>`);
+                // Initialize Choices.js after options are loaded
+                if (window.courseChoicesInstance) window.courseChoicesInstance.destroy();
+                window.courseChoicesInstance = new Choices('#courseFilter', { shouldSort: false, searchEnabled: false });
+            });
+        }
+        // Fetch and render enrolment data for the current filters and page
+        function loadData(page) {
+            if (page) currentPage = page;
+            let url = '/api/get_enrolments.php';
+            let params = [];
+            // Apply search filter if selected
+            if (searchType === 'user' && searchId) params.push('user_id=' + searchId);
+            if (searchType === 'course' && searchId) params.push('course_id=' + searchId);
+            // Apply course dropdown filter (overrides search if set)
+            let course = document.getElementById('courseFilter').value;
+            if (course) {
+                params = params.filter(p => !p.startsWith('course_id='));
+                params.push('course_id=' + course);
+            }
+            // Apply status filter
+            let status = document.getElementById('statusFilter').value;
+            if (status) params.push('completion_status=' + encodeURIComponent(status));
+            // Pagination
+            params.push('limit=' + pageSize);
+            params.push('offset=' + (pageSize * (currentPage - 1)));
+            if (params.length) url += '?' + params.join('&');
+            fetch(url)
+                .then(r => {
+                    if (!r.ok) throw new Error('Network response was not ok');
+                    return r.json();
+                })
+                .then(data => {
+                    // Support both array and {data, total} response
+                    let rows = Array.isArray(data) ? data : data.data;
+                    totalRows = data.total || rows.length;
+                    //Sort by enrolment_id ascending
+                    rows = rows.sort((a, b) => Number(a.enrolment_id) - Number(b.enrolment_id));
+                    let tbody = document.querySelector('#results tbody');
+                    tbody.innerHTML = '';
+                    rows.forEach(row => {
+                        tbody.innerHTML += `<tr>
                     <td>${row.enrolment_id}</td>
                     <td>${row.first_name} ${row.surname}</td>
                     <td>${row.description}</td>
                     <td>${row.completion_status}</td>
                 </tr>`;
+                    });
+                    renderPagination();
+                })
+                .catch(err => {
+                    let tbody = document.querySelector('#results tbody');
+                    tbody.innerHTML = '';
+                    alert('Failed to load data: ' + err.message);
+                });
+        }
+        // Render pagination controls
+        function renderPagination() {
+            const pag = document.getElementById('pagination');
+            const totalPages = Math.ceil(totalRows / pageSize);
+            if (totalPages <= 1) { pag.innerHTML = ''; return; }
+            let html = '';
+            html += `<button class="btn btn-outline-secondary btn-sm" onclick="loadData(1)" ${currentPage === 1 ? 'disabled' : ''}>First</button>`;
+            html += `<button class="btn btn-outline-secondary btn-sm" onclick="loadData(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>`;
+            html += `<span>Page ${currentPage} of ${totalPages}</span>`;
+            html += `<button class="btn btn-outline-secondary btn-sm" onclick="loadData(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+            html += `<button class="btn btn-outline-secondary btn-sm" onclick="loadData(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>Last</button>`;
+            pag.innerHTML = html;
+        }
+        // Handle input in the search bar and show autocomplete suggestions
+        function onSearchInput() {
+            let val = document.getElementById('searchBar').value.trim().toLowerCase();
+            let ac = document.getElementById('autocomplete');
+            if (!val) {
+                ac.classList.add('d-none');
+                return;
+            }
+            // Find matching users and courses
+            let userMatches = users.filter(u => (`${u.first_name} ${u.surname}`.toLowerCase().includes(val)));
+            let courseMatches = courses.filter(c => c.description.toLowerCase().includes(val));
+            let html = '';
+            userMatches.forEach(u => {
+                html += `<div class="autocomplete-suggestion" onclick="selectSearch('user', ${u.user_id}, '${u.first_name} ${u.surname}')">User: ${u.first_name} ${u.surname}</div>`;
             });
-            renderPagination();
-        })
-        .catch(err => {
-            let tbody = document.querySelector('#results tbody');
-            tbody.innerHTML = '';
-            alert('Failed to load data: ' + err.message);
-        });
-}
-// Render pagination controls
-function renderPagination() {
-    const pag = document.getElementById('pagination');
-    const totalPages = Math.ceil(totalRows / pageSize);
-    if (totalPages <= 1) { pag.innerHTML = ''; return; }
-    let html = '';
-    html += `<button class="btn btn-outline-secondary btn-sm" onclick="loadData(1)" ${currentPage===1?'disabled':''}>First</button>`;
-    html += `<button class="btn btn-outline-secondary btn-sm" onclick="loadData(${currentPage-1})" ${currentPage===1?'disabled':''}>Prev</button>`;
-    html += `<span>Page ${currentPage} of ${totalPages}</span>`;
-    html += `<button class="btn btn-outline-secondary btn-sm" onclick="loadData(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>Next</button>`;
-    html += `<button class="btn btn-outline-secondary btn-sm" onclick="loadData(${totalPages})" ${currentPage===totalPages?'disabled':''}>Last</button>`;
-    pag.innerHTML = html;
-}
-// Handle input in the search bar and show autocomplete suggestions
-function onSearchInput() {
-    let val = document.getElementById('searchBar').value.trim().toLowerCase();
-    let ac = document.getElementById('autocomplete');
-    if (!val) {
-        ac.classList.add('d-none');
-        return;
-    }
-    // Find matching users and courses
-    let userMatches = users.filter(u => (`${u.first_name} ${u.surname}`.toLowerCase().includes(val)));
-    let courseMatches = courses.filter(c => c.description.toLowerCase().includes(val));
-    let html = '';
-    userMatches.forEach(u => {
-        html += `<div class="autocomplete-suggestion" onclick="selectSearch('user', ${u.user_id}, '${u.first_name} ${u.surname}')">User: ${u.first_name} ${u.surname}</div>`;
-    });
-    courseMatches.forEach(c => {
-        html += `<div class="autocomplete-suggestion" onclick="selectSearch('course', ${c.course_id}, '${c.description}')">Course: ${c.description}</div>`;
-    });
-    if (!html) {
-        ac.classList.add('d-none');
-        return;
-    }
-    ac.innerHTML = html;
-    ac.classList.remove('d-none');
-}
-// When a suggestion is selected, set the search type/id and reload data
-function selectSearch(type, id, label) {
-    searchType = type;
-    searchId = id;
-    document.getElementById('searchBar').value = label;
-    document.getElementById('autocomplete').classList.add('d-none');
-    loadData(1);
-}
-// Clear the search bar and reload all data
-function clearSearch() {
-    searchType = null;
-    searchId = null;
-    document.getElementById('searchBar').value = '';
-    document.getElementById('autocomplete').classList.add('d-none');
-    loadData(1);
-}
-function onPageSizeChange() {
-    pageSize = parseInt(document.getElementById('pageSizeSelector').value, 10);
-    loadData(1);
-}
-// Initial load: fetch users, courses, and first page of data
-window.onload = function() {
-    loadUsers();
-    loadCourses();
-    loadData(1);
-};
-</script>
+            courseMatches.forEach(c => {
+                html += `<div class="autocomplete-suggestion" onclick="selectSearch('course', ${c.course_id}, '${c.description}')">Course: ${c.description}</div>`;
+            });
+            if (!html) {
+                ac.classList.add('d-none');
+                return;
+            }
+            ac.innerHTML = html;
+            ac.classList.remove('d-none');
+        }
+        // When a suggestion is selected, set the search type/id and reload data
+        function selectSearch(type, id, label) {
+            searchType = type;
+            searchId = id;
+            document.getElementById('searchBar').value = label;
+            document.getElementById('autocomplete').classList.add('d-none');
+            loadData(1);
+        }
+        // Clear the search bar and reload all data
+        function clearSearch() {
+            searchType = null;
+            searchId = null;
+            document.getElementById('searchBar').value = '';
+            document.getElementById('autocomplete').classList.add('d-none');
+            loadData(1);
+        }
+        function onPageSizeChange() {
+            pageSize = parseInt(document.getElementById('pageSizeSelector').value, 10);
+            loadData(1);
+        }
+        // Initial load: fetch users, courses, and first page of data
+        window.onload = function () {
+            loadUsers();
+            loadCourses();
+            loadData(1);
+        };
+    </script>
     <!-- Choices.js JS -->
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Only initialize Choices for status and page size here
-        new Choices('#statusFilter', { shouldSort: false, searchEnabled: false });
-        new Choices('#pageSizeSelector', { shouldSort: false, searchEnabled: false });
-    });
+        document.addEventListener('DOMContentLoaded', function () {
+            // Only initialize Choices for status and page size here
+            new Choices('#statusFilter', { shouldSort: false, searchEnabled: false });
+            new Choices('#pageSizeSelector', { shouldSort: false, searchEnabled: false });
+        });
     </script>
 </body>
-</html> 
+
+</html>
